@@ -12,7 +12,7 @@ class CarState(CarStateBase):
     super().__init__(CP)
 
     #Auto detection for setup
-    self.no_radar = CP.sccBus == -1
+    #self.no_radar = CP.sccBus == -1
     self.mdps_bus = CP.mdpsBus
     self.sas_bus = CP.sasBus
     self.scc_bus = CP.sccBus
