@@ -683,7 +683,7 @@ void TIM1_BRK_TIM9_IRQ_Handler(void) {
       puth(can_tx2_q.r_ptr); puts(" "); puth(can_tx2_q.w_ptr); puts("\n");
     #endif
 
-    // Tick fan driver
+    // Tick drivers
     fan_tick();
 
     // set green LED to be controls allowed
@@ -708,9 +708,10 @@ void TIM1_BRK_TIM9_IRQ_Handler(void) {
       if (current_safety_mode != SAFETY_ALLOUTPUT) {
         set_safety_mode(SAFETY_ALLOUTPUT, 0U); // MDPS will hard if SAFETY_NOOUTPUT
       }
-      if (power_save_status != POWER_SAVE_STATUS_ENABLED) {
-        set_power_save_state(POWER_SAVE_STATUS_ENABLED);
-      }
+	 // MDPS will if panda sleep
+     // if (power_save_status != POWER_SAVE_STATUS_ENABLED) {
+     //   set_power_save_state(POWER_SAVE_STATUS_ENABLED);
+     // }
 
       // Also disable IR when the heartbeat goes missing
       current_board->set_ir_power(0U);
