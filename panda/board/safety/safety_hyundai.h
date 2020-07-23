@@ -7,15 +7,15 @@ const int HYUNDAI_DRIVER_TORQUE_ALLOWANCE = 50;
 const int HYUNDAI_DRIVER_TORQUE_FACTOR = 2;
 const int HYUNDAI_STANDSTILL_THRSLD = 30;  // ~1kph
 const CanMsg HYUNDAI_TX_MSGS[] = {
-  {832, 0, 8},  // LKAS11 Bus 0
-  {1265, 0, 4}, // CLU11 Bus 0
+  {832, 0, 8}, {832, 1, 8}, // LKAS11 Bus 0, 1
+  {1265, 0, 4}, {1265, 1, 4}, {1265, 2, 4}, // CLU11 Bus 0, 1, 2
   {1157, 0, 4}, // LFAHDA_MFC Bus 0
-  {832, 1, 8},{1265, 1, 4}, {1265, 2, 4}, {593, 2, 8}, {1057, 0, 8}, {790, 1, 8}, {912, 0, 7}, {912,1, 7}, {1268, 0, 8}, {1268,1, 8},
+  {593, 2, 8},  // MDPS12, Bus 2
   {1056, 0, 8}, //   SCC11,  Bus 0
   {1057, 0, 8}, //   SCC12,  Bus 0
   {1290, 0, 8}, //   SCC13,  Bus 0
   {905, 0, 8},  //   SCC14,  Bus 0
-  {1186, 0, 8}  //   4a2SCC, Bus 0
+  {1186, 0, 8},  //   4a2SCC, Bus 0
  };
 
 // TODO: missing checksum for wheel speeds message,worst failure case is
@@ -73,27 +73,28 @@ static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
   int addr = GET_ADDR(to_push);
   int bus = GET_BUS(to_push);
 
-  if (valid && ((bus == 0) || (bus == 1) || (bus == 2))) {
-    // check if we have a LCAN on Bus1
-    if ((bus == 1) && (addr == 1296 || addr == 524)) {
-      if (hyundai_forward_bus1 || !hyundai_LCAN_on_bus1) {
-        hyundai_LCAN_on_bus1 = true;
-        hyundai_forward_bus1 = false;
-      }
+  // check if we have a LCAN on Bus1
+  if ((bus == 1) && (addr == 1296 || addr == 524)) {
+    if (hyundai_forward_bus1 || !hyundai_LCAN_on_bus1) {
+      hyundai_LCAN_on_bus1 = true;
+      hyundai_forward_bus1 = false;
     }
-    // check if we have a MDPS on Bus1 and LCAN not on the bus
-    if ((bus == 1) && (addr == 593 || addr == 897) && (!hyundai_LCAN_on_bus1)) {
-       if ((hyundai_mdps_bus != bus) || (!hyundai_forward_bus1)) {
-        hyundai_mdps_bus = bus;
-        hyundai_forward_bus1 = true;
-      }
+  }
+  // check if we have a MDPS on Bus1 and LCAN not on the bus
+  if ((bus == 1) && (addr == 593 || addr == 897) && (!hyundai_LCAN_on_bus1)) {
+    if ((hyundai_mdps_bus != bus) || (!hyundai_forward_bus1)) {
+      hyundai_mdps_bus = bus;
+      hyundai_forward_bus1 = true;
     }
-    // check if we have a SCC on Bus1 and LCAN not on the bus
-    if ((bus == 1) && (addr == 1057) && (!hyundai_LCAN_on_bus1)) {
-      if (!hyundai_forward_bus1) {
-        hyundai_forward_bus1 = true;
-      }
     }
+  // check if we have a SCC on Bus1 and LCAN not on the bus
+  if ((bus == 1) && (addr == 1057) && (!hyundai_LCAN_on_bus1)) {
+    if (!hyundai_forward_bus1) {
+      hyundai_forward_bus1 = true;
+    }
+  }
+
+  if (valid) {
     if ((addr == 593) && (bus == hyundai_mdps_bus)) {
       int torque_driver_new = ((GET_BYTES_04(to_push) & 0x7ff) * 0.79) - 808; // scale down new driver torque signal to match previous one
       // update array of samples
@@ -132,6 +133,11 @@ static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
     brake_pressed = false;
     if(bus == 0){
       generic_rx_checks((addr == 832));
+    }
+
+    // check if stock camera ECU is on bus 0
+    if ((safety_mode_cnt > RELAY_TRNS_TIMEOUT) && bus == 0 && addr == 832) {
+      relay_malfunction_set();
     }
   }
   return valid;
@@ -229,13 +235,18 @@ static int hyundai_fwd_hook(int bus_num, CAN_FIFOMailBox_TypeDef *to_fwd) {
     if (bus_num == 0) {
       if (!OP_CLU_live || addr != 1265 || !hyundai_mdps_bus) {
         if (!OP_MDPS_live || addr != 593) {
-          bus_fwd = hyundai_forward_bus1 ? 12 : 2;
+          if (addr != 790) {
+            bus_fwd = hyundai_forward_bus1 ? 12 : 2;
+          } else {
+            bus_fwd = 2;  // EON create EMS11 for MDPS
+            OP_EMS_live -= 1;
+          }
         } else {
           bus_fwd = fwd_to_bus1;  // EON create MDPS for LKAS
           OP_MDPS_live -= 1;
         }
       } else {
-        bus_fwd = 2; // EON create CLU11 for MDPS
+        bus_fwd = 2; // EON create CLU12 for MDPS
         OP_CLU_live -= 1;
       }
     }
@@ -253,7 +264,7 @@ static int hyundai_fwd_hook(int bus_num, CAN_FIFOMailBox_TypeDef *to_fwd) {
       }
     }
     if (bus_num == 2) {
-      if (addr != 832 || !OP_LKAS_live) {
+      if (!OP_LKAS_live || (addr != 832 && addr != 1157)) {
         if (!OP_SCC_live || (addr != 1056 && addr != 1057 && addr != 1290 && addr != 905)) {
           bus_fwd = hyundai_forward_bus1 ? 10 : 0;
         } else {
