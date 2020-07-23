@@ -63,7 +63,7 @@ def create_lkas11(packer, frame, car_fingerprint, apply_steer, steer_req,
   return packer.make_can_msg("LKAS11", bus, values)
 
 
-def create_clu11(packer, frame, clu11, button, speed):
+def create_clu11(packer, frame, bus, clu11, button, speed):
   values = copy.deepcopy( clu11 )
   values["CF_Clu_CruiseSwState"] = button
   values["CF_Clu_Vanz"] = speed
