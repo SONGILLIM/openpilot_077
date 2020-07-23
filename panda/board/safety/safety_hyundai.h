@@ -1,8 +1,8 @@
 const int HYUNDAI_MAX_STEER = 409;             // like stock
-const int HYUNDAI_MAX_RT_DELTA = 112;          // max delta torque allowed for real time checks
+const int HYUNDAI_MAX_RT_DELTA = 200;          // max delta torque allowed for real time checks
 const uint32_t HYUNDAI_RT_INTERVAL = 250000;   // 250ms between real time checks
-const int HYUNDAI_MAX_RATE_UP = 5;
-const int HYUNDAI_MAX_RATE_DOWN = 10;
+const int HYUNDAI_MAX_RATE_UP = 4;
+const int HYUNDAI_MAX_RATE_DOWN = 7;
 const int HYUNDAI_DRIVER_TORQUE_ALLOWANCE = 50;
 const int HYUNDAI_DRIVER_TORQUE_FACTOR = 2;
 const int HYUNDAI_STANDSTILL_THRSLD = 30;  // ~1kph
@@ -108,7 +108,6 @@ static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
       if (0) { // for cars with long control
         cruise_engaged = (GET_BYTES_04(to_push) >> 13) & 0x3; // 2 bits: 13-14
       } else if (1) { // for cars without long control
-        cruise_engaged = GET_BYTES_04(to_push) & 0x1; // ACC main_on signal
         cruise_engaged = 1; //GET_BYTES_04(to_push) & 0x1; // ACC main_on signal
       }
       if (cruise_engaged && !cruise_engaged_prev) {
