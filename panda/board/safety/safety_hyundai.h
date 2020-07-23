@@ -57,18 +57,9 @@ bool hyundai_forward_bus1 = false;
 
 static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
 
-  bool valid;
-  if (0) {
-    valid = addr_safety_check(to_push, hyundai_legacy_rx_checks, HYUNDAI_LEGACY_RX_CHECK_LEN,
-                              NULL, NULL,
-                              NULL);
-
-  } else {
-    valid = addr_safety_check(to_push, hyundai_rx_checks, HYUNDAI_RX_CHECK_LEN,
-                              NULL, NULL,
-                              NULL);
-  }
-
+  bool valid = addr_safety_check(to_push, hyundai_rx_checks, HYUNDAI_RX_CHECK_LEN,
+                                 NULL, NULL,
+                                 NULL);
 
   int addr = GET_ADDR(to_push);
   int bus = GET_BUS(to_push);
@@ -102,7 +93,7 @@ static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
     }
 
     // enter controls on rising edge of ACC, exit controls on ACC off
-    if ((1) || (addr == 1056 && (bus != 1 || !hyundai_LCAN_on_bus1))) {
+    if (addr == 1056 && (bus != 1 || !hyundai_LCAN_on_bus1)) {
       hyundai_has_scc = true;
       car_SCC_live = 50;
       int cruise_engaged;
@@ -129,15 +120,9 @@ static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
       vehicle_moving = hyundai_speed > HYUNDAI_STANDSTILL_THRSLD;
     }
 
-
     brake_pressed = false;
     if(bus == 0){
       generic_rx_checks((addr == 832));
-    }
-
-    // check if stock camera ECU is on bus 0
-    if ((safety_mode_cnt > RELAY_TRNS_TIMEOUT) && bus == 0 && addr == 832) {
-      relay_malfunction_set();
     }
   }
   return valid;
