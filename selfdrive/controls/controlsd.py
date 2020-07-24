@@ -262,8 +262,8 @@ class Controls:
       self.mismatch_counter = 0
 
     controlsAllowed = not self.sm['health'].controlsAllowed
-    if not controlsAllowed and self.enabled:
-      self.mismatch_counter += 1
+    #if not controlsAllowed and self.enabled:
+    #  self.mismatch_counter += 1
 
     print( 'controlsAllowed={} self.mismatch_counter={}'.format( controlsAllowed, self.mismatch_counter ) )
   
