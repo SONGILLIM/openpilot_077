@@ -174,7 +174,7 @@ managed_processes = {
   "radard": "selfdrive.controls.radard",
   "dmonitoringd": "selfdrive.monitoring.dmonitoringd",
   "ubloxd": ("selfdrive/locationd", ["./ubloxd"]),
-  "loggerd": ("selfdrive/loggerd", ["./loggerd"]),
+  #"loggerd": ("selfdrive/loggerd", ["./loggerd"]),
   "logmessaged": "selfdrive.logmessaged",
   "locationd": "selfdrive.locationd.locationd",
   "tombstoned": "selfdrive.tombstoned",
@@ -189,7 +189,7 @@ managed_processes = {
   "sensord": ("selfdrive/sensord", ["./sensord"]),
   "clocksd": ("selfdrive/clocksd", ["./clocksd"]),
   "gpsd": ("selfdrive/sensord", ["./gpsd"]),
-  "updated": "selfdrive.updated",
+  #"updated": "selfdrive.updated",
   "dmonitoringmodeld": ("selfdrive/modeld", ["./dmonitoringmodeld"]),
   "modeld": ("selfdrive/modeld", ["./modeld"]),
   #"driverview": "selfdrive.monitoring.driverview",
@@ -226,14 +226,14 @@ if ANDROID:
   persistent_processes += [
     'logcatd',
     'tombstoned',
-    'updated',
+    #'updated',
     'deleter',
   ]
 
 car_started_processes = [
   'controlsd',
   'plannerd',
-  'loggerd',
+  #'loggerd',
   'radard',
   'dmonitoringd',
   'calibrationd',
