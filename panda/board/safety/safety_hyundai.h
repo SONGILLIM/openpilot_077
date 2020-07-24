@@ -151,7 +151,7 @@ static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
       if (cruise_button == 4) {
         controls_allowed = 0;
       }
-      cruise_engaged_prev = cruise_engaged;
+      cruise_engaged_prev = cruise_button;
     }
 
     gas_pressed = false;
