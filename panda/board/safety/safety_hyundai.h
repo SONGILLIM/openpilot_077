@@ -1,8 +1,7 @@
-  
-const int HYUNDAI_MAX_STEER = 255;             // like stock
-const int HYUNDAI_MAX_RT_DELTA = 112;          // max delta torque allowed for real time checks
+const int HYUNDAI_MAX_STEER = 409;             // like stock
+const int HYUNDAI_MAX_RT_DELTA = 200;          // max delta torque allowed for real time checks
 const uint32_t HYUNDAI_RT_INTERVAL = 250000;   // 250ms between real time checks
-const int HYUNDAI_MAX_RATE_UP = 3;
+const int HYUNDAI_MAX_RATE_UP = 4;
 const int HYUNDAI_MAX_RATE_DOWN = 7;
 const int HYUNDAI_DRIVER_TORQUE_ALLOWANCE = 50;
 const int HYUNDAI_DRIVER_TORQUE_FACTOR = 2;
@@ -14,9 +13,9 @@ const CanMsg HYUNDAI_TX_MSGS[] = {
   {832, 1, 8},{1265, 1, 4}, {1265, 2, 4}, {593, 2, 8}, {1057, 0, 8}, {790, 1, 8}, {912, 0, 7}, {912,1, 7}, {1268, 0, 8}, {1268,1, 8},
   {1056, 0, 8}, //   SCC11,  Bus 0
   {1057, 0, 8}, //   SCC12,  Bus 0
-  //{1290, 0, 8}, //   SCC13,  Bus 0
-  //{905, 0, 8},  //   SCC14,  Bus 0
-  //{1186, 0, 8}  //   4a2SCC, Bus 0
+  {1290, 0, 8}, //   SCC13,  Bus 0
+  {905, 0, 8},  //   SCC14,  Bus 0
+  {1186, 0, 8}  //   4a2SCC, Bus 0
  };
 
 // TODO: missing checksum for wheel speeds message,worst failure case is
@@ -95,23 +94,32 @@ static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
         hyundai_forward_bus1 = true;
       }
     }
-    if ((addr == 593) && (bus == hyundai_mdps_bus)) {
+
+  if (valid) {
+    if (addr == 593 && bus == hyundai_mdps_bus) {
       int torque_driver_new = ((GET_BYTES_04(to_push) & 0x7ff) * 0.79) - 808; // scale down new driver torque signal to match previous one
       // update array of samples
       update_sample(&torque_driver, torque_driver_new);
     }
 
     // enter controls on rising edge of ACC, exit controls on ACC off
-    if ((1) || (addr == 1056 && (bus != 1 || !hyundai_LCAN_on_bus1))) {
+    if (addr == 1057 && OP_SCC_live && (bus != 1 || !hyundai_LCAN_on_bus1)) { // for cars with long control
       hyundai_has_scc = true;
       car_SCC_live = 50;
-      int cruise_engaged;
-      if (0) { // for cars with long control
-        cruise_engaged = (GET_BYTES_04(to_push) >> 13) & 0x3; // 2 bits: 13-14
-      } else if (1) { // for cars without long control
-        cruise_engaged = GET_BYTES_04(to_push) & 0x1; // ACC main_on signal
-        cruise_engaged = 1; //GET_BYTES_04(to_push) & 0x1; // ACC main_on signal
+      // 2 bits: 13-14
+      int cruise_engaged = (GET_BYTES_04(to_push) >> 13) & 0x3;
+      if (cruise_engaged && !cruise_engaged_prev) {
+        controls_allowed = 1;
       }
+      if (!cruise_engaged) {
+        controls_allowed = 0;
+      }
+      cruise_engaged_prev = cruise_engaged;
+    }
+    if (addr == 1056 && !OP_SCC_live && (bus != 1 || !hyundai_LCAN_on_bus1)) { // for cars without long control
+      hyundai_has_scc = true;
+      // 2 bits: 13-14
+      int cruise_engaged = GET_BYTES_04(to_push) & 0x1; // ACC main_on signal
       if (cruise_engaged && !cruise_engaged_prev) {
         controls_allowed = 1;
       }
