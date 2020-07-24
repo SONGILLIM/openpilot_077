@@ -113,7 +113,7 @@ class CarController():
     #print( 'st={} cmd={} long={}  steer={} req={}'.format(CS.out.cruiseState.standstill, pcm_cancel_cmd, self.CP.openpilotLongitudinalControl, apply_steer, steer_req ) )
 
     if pcm_cancel_cmd and self.CP.openpilotLongitudinalControl:
-      can_sends.append(create_clu11(self.packer, frame, CS.clu11, Buttons.CANCEL))
+      can_sends.append(create_clu11(self.packer, frame, CS.scc_bus, CS.clu11, Buttons.CANCEL, clu11_speed))
     elif CS.out.cruiseState.standstill:
       # SCC won't resume anyway when the lead distace is less than 3.7m
       # send resume at a max freq of 5Hz
