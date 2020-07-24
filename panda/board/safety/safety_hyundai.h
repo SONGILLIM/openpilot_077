@@ -1,3 +1,4 @@
+  
 const int HYUNDAI_MAX_STEER = 255;             // like stock
 const int HYUNDAI_MAX_RT_DELTA = 112;          // max delta torque allowed for real time checks
 const uint32_t HYUNDAI_RT_INTERVAL = 250000;   // 250ms between real time checks
@@ -6,15 +7,6 @@ const int HYUNDAI_MAX_RATE_DOWN = 7;
 const int HYUNDAI_DRIVER_TORQUE_ALLOWANCE = 50;
 const int HYUNDAI_DRIVER_TORQUE_FACTOR = 2;
 const int HYUNDAI_STANDSTILL_THRSLD = 30;  // ~1kph
-bool hyundai_has_scc = false;
-int OP_LKAS_live = 0;
-int OP_MDPS_live = 0;
-int OP_CLU_live = 0;
-int OP_SCC_live = 0;
-int car_SCC_live = 0;
-int hyundai_mdps_bus = 0;
-bool hyundai_LCAN_on_bus1 = false;
-bool hyundai_forward_bus1 = false;
 const CanMsg HYUNDAI_TX_MSGS[] = {
   {832, 0, 8},  // LKAS11 Bus 0
   {1265, 0, 4}, // CLU11 Bus 0
@@ -22,18 +14,22 @@ const CanMsg HYUNDAI_TX_MSGS[] = {
   {832, 1, 8},{1265, 1, 4}, {1265, 2, 4}, {593, 2, 8}, {1057, 0, 8}, {790, 1, 8}, {912, 0, 7}, {912,1, 7}, {1268, 0, 8}, {1268,1, 8},
   {1056, 0, 8}, //   SCC11,  Bus 0
   {1057, 0, 8}, //   SCC12,  Bus 0
-  {1290, 0, 8}, //   SCC13,  Bus 0
-  {905, 0, 8},  //   SCC14,  Bus 0
-  {1186, 0, 8}  //   4a2SCC, Bus 0
+  //{1290, 0, 8}, //   SCC13,  Bus 0
+  //{905, 0, 8},  //   SCC14,  Bus 0
+  //{1186, 0, 8}  //   4a2SCC, Bus 0
  };
 
 // TODO: missing checksum for wheel speeds message,worst failure case is
 //       wheel speeds stuck at 0 and we don't disengage on brake press
+// TODO: refactor addr check to cleanly re-enable commented out checks for cars that have them
 AddrCheckStruct hyundai_rx_checks[] = {
   //{.msg = {{608, 0, 8, .check_checksum = true, .max_counter = 3U, .expected_timestep = 10000U}}},
-  //{.msg = {{902, 0, 8, .check_checksum = false, .max_counter = 15U, .expected_timestep = 10000U}}},
+  // TODO: older hyundai models don't populate the counter bits in 902
+  //{.msg = {{902, 0, 8, .max_counter = 15U,  .expected_timestep = 10000U}}},
+  //{.msg = {{902, 0, 8, .max_counter = 0U,  .expected_timestep = 10000U}}},
   //{.msg = {{916, 0, 8, .check_checksum = true, .max_counter = 7U, .expected_timestep = 10000U}}},
-  //{.msg = {{1057, 0, 8, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U}}},
+  //{.msg = {{916, 0, 8, .check_checksum = false, .max_counter = 0U, .expected_timestep = 10000U}}},
+ // {.msg = {{1057, 0, 8, .check_checksum = true, .max_counter = 15U, .expected_timestep = 20000U}}},
 };
 const int HYUNDAI_RX_CHECK_LEN = sizeof(hyundai_rx_checks) / sizeof(hyundai_rx_checks[0]);
 
@@ -48,6 +44,16 @@ AddrCheckStruct hyundai_legacy_rx_checks[] = {
 const int HYUNDAI_LEGACY_RX_CHECK_LEN = sizeof(hyundai_legacy_rx_checks) / sizeof(hyundai_legacy_rx_checks[0]);
 
 bool hyundai_legacy = false;
+
+bool hyundai_has_scc = false;
+int OP_LKAS_live = 0;
+int OP_MDPS_live = 0;
+int OP_CLU_live = 0;
+int OP_SCC_live = 0;
+int car_SCC_live = 0;
+int hyundai_mdps_bus = 0;
+bool hyundai_LCAN_on_bus1 = false;
+bool hyundai_forward_bus1 = false;
 
 
 static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
@@ -103,6 +109,7 @@ static int hyundai_rx_hook(CAN_FIFOMailBox_TypeDef *to_push) {
       if (0) { // for cars with long control
         cruise_engaged = (GET_BYTES_04(to_push) >> 13) & 0x3; // 2 bits: 13-14
       } else if (1) { // for cars without long control
+        cruise_engaged = GET_BYTES_04(to_push) & 0x1; // ACC main_on signal
         cruise_engaged = 1; //GET_BYTES_04(to_push) & 0x1; // ACC main_on signal
       }
       if (cruise_engaged && !cruise_engaged_prev) {
@@ -256,10 +263,10 @@ static int hyundai_fwd_hook(int bus_num, CAN_FIFOMailBox_TypeDef *to_fwd) {
           OP_SCC_live -= 1;
         }
       } else if (!hyundai_mdps_bus) {
-        bus_fwd = fwd_to_bus1; // EON create LKAS and LFA for Car
+        bus_fwd = fwd_to_bus1; // EON create LKAS for Car
         OP_LKAS_live -= 1; 
       } else {
-        OP_LKAS_live -= 1; // EON create LKAS and LFA for Car and MDPS
+        OP_LKAS_live -= 1; // EON create LKAS for Car and MDPS
       }
     }
   } else {
